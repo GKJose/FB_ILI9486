@@ -1,6 +1,7 @@
 #ifndef FB_ILI9486_H
 #define FB_ILI9486_H
 #include <stdint.h>
+#include <stdbool.h>
 #ifdef __cplusplus
 extern "C"{
 #endif
@@ -30,20 +31,20 @@ typedef union {
 /*********************
  *      DEFINES
  *********************/
-#define LCD_RST_PIN 8
-#define LCD_CS_PIN  9
-#define LCD_RS_PIN  7
-#define LCD_WR_PIN  0
-#define LCD_RD_PIN  2
+#define LCD_RST_PIN 0
+#define LCD_CS_PIN  2
+#define LCD_RS_PIN  3
+#define LCD_WR_PIN  12
+#define LCD_RD_PIN  13
 
-#define LCD_D7_PIN  21
-#define LCD_D6_PIN  30
-#define LCD_D5_PIN  14
-#define LCD_D4_PIN  13
-#define LCD_D3_PIN  12
-#define LCD_D2_PIN  3
-#define LCD_D1_PIN  23
-#define LCD_D0_PIN  22
+#define LCD_D7_PIN  30
+#define LCD_D6_PIN  31
+#define LCD_D5_PIN  8
+#define LCD_D4_PIN  9
+#define LCD_D3_PIN  7
+#define LCD_D2_PIN  21
+#define LCD_D1_PIN  22
+#define LCD_D0_PIN  11
 
 #define ILI9486_CMD_MODE    0
 #define ILI9486_DATA_MODE   1
