@@ -139,7 +139,23 @@ void main(void){
 
 }
 void gpio_init(void){
+    wiringPiSetup();
+    pinMode(LCD_RST_PIN,OUTPUT);
+    pinMode(LCD_CS_PIN,OUTPUT);
+    pinMode(LCD_RS_PIN,OUTPUT);
+    pinMode(LCD_WS_PIN,OUTPUT)
+    pinMode(LCD_RD_PIN,OUTPUT);
+
+    pinMode(LCD_D7_PIN,OUTPUT);
+    pinMode(LCD_D6_PIN,OUTPUT);
+    pinMode(LCD_D5_PIN,OUTPUT);
+    pinMode(LCD_D4_PIN,OUTPUT);
+    pinMode(LCD_D3_PIN,OUTPUT);
+    pinMode(LCD_D2_PIN,OUTPUT);
+    pinMode(LCD_D1_PIN,OUTPUT);
+    pinMode(LCD_D0_PIN,OUTPUT);
     
+
 }
 void ili9486_init(void){
     uint8_t data[15];
@@ -269,9 +285,17 @@ void ili9486_rotate(int degrees,bool bgr){
 }
 void ili9486_write(int mode,uint8_t data){
     if(mode == ILI9486_CMD_MODE){
-
+        digitalWrite(LCD_CS_PIN,LOW);
+        digitalWrite(LCD_RD_PIN,HIGH);
+        digitalWrite(LCD_WR_PIN,LOW);
+        usleep(50);
+        digitalWrite(LCD_WR_PIN,HIGH);
     }else if(mode == ILI9486_DATA_MODE){
-
+        digitalWrite(LCD_CS_PIN,HIGH);
+        digitalWrite(LCD_RD_PIN,HIGH);
+        digitalWrite(LCD_WR_PIN,LOW);
+        usleep(50);
+        digitalWrite(LCD_WR_PIN,HIGH);
     }
 
         //Write data to 8-bit bus

@@ -1,6 +1,6 @@
 #ifndef FB_ILI9486_H
 #define FB_ILI9486_H
-
+#include <stdint.h>
 #ifdef __cplusplus
 extern "C"{
 #endif
@@ -11,7 +11,6 @@ void ili9486_init(void);
 void ili9486_rotate(int degrees,bool bgr);
 void ili9486_write(int mode,uint8_t data);
 void ili9486_write_array(int mode,uint8_t *data, uint16_t len);
-void ili9486_write_pixel_to_screen(uint32_t pixIdx,fbcolor16_t color);
 void sleep_ms(int delay);
 
 #ifdef __cplusplus
