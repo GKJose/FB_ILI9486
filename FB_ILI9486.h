@@ -2,9 +2,22 @@
 #define FB_ILI9486_H
 #include <stdint.h>
 #include <stdbool.h>
+#include <gpiod.h>
 #ifdef __cplusplus
+
 extern "C"{
 #endif
+/*********************
+ *      TYPEDEFS
+ *********************/
+typedef union {
+    struct {
+        uint8_t blue : 5;
+        uint8_t green : 6;
+        uint8_t red : 5;
+    } ch;
+    uint16_t full;
+} fbcolor16_t;
 
 void main(int argc,char* argv[]);
 void gpio_init(void);
@@ -12,39 +25,32 @@ void ili9486_init(void);
 void ili9486_rotate(int degrees,bool bgr);
 void ili9486_write(int mode,uint8_t data);
 void ili9486_write_array(int mode,uint8_t *data, uint16_t len);
+void ili9486_write_color(fbcolor16_t *color);
+void ili9486_write_color_array(fbcolor16_t* color_array,uint16_t len);
 void sleep_ms(int delay);
 
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
-/*********************
- *      TYPEDEFS
- *********************/
-typedef union {
-    struct {
-        uint16_t blue : 5;
-        uint16_t green : 6;
-        uint16_t red : 5;
-    } ch;
-    uint16_t full;
-} fbcolor16_t;
+
 /*********************
  *      DEFINES
  *********************/
-#define LCD_RST_PIN 0
-#define LCD_CS_PIN  2
-#define LCD_RS_PIN  3
-#define LCD_WR_PIN  12
-#define LCD_RD_PIN  13
+ //GPIOCHIP0 lines
+#define LCD_RST_PIN  2
+#define LCD_CS_PIN   3
+#define LCD_RS_PIN   4
+#define LCD_WR_PIN  17
+#define LCD_RD_PIN  27
 
-#define LCD_D7_PIN  30
-#define LCD_D6_PIN  31
-#define LCD_D5_PIN  8
-#define LCD_D4_PIN  9
-#define LCD_D3_PIN  7
-#define LCD_D2_PIN  21
-#define LCD_D1_PIN  22
-#define LCD_D0_PIN  11
+#define LCD_D7_PIN  22
+#define LCD_D6_PIN  10
+#define LCD_D5_PIN  9
+#define LCD_D4_PIN  11
+#define LCD_D3_PIN  0
+#define LCD_D2_PIN  5
+#define LCD_D1_PIN  6
+#define LCD_D0_PIN  13
 
 #define ILI9486_CMD_MODE    0
 #define ILI9486_DATA_MODE   1

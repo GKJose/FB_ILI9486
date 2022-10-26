@@ -8,7 +8,6 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <string.h>
-#include <wiringPi.h>
 
 #include <linux/fb.h>
 
@@ -45,6 +44,17 @@ static char *fbp = 0;
 static long int screensize = 0;
 static int fbfd = 0;
 
+//---------------------------------
+static const char *chipname = "gpiochip0";
+static struct gpiod_chip *chip;
+static struct gpiod_line *lrst;
+static struct gpiod_line *lcs;
+static struct gpiod_line *lrs;
+static struct gpiod_line *lwr;
+static struct gpiod_line *lrd;
+static struct gpiod_line_bulk ldata;
+
+static unsigned int ldatapins[] = {LCD_D7_PIN,LCD_D6_PIN,LCD_D5_PIN,LCD_D4_PIN,LCD_D3_PIN,LCD_D2_PIN,LCD_D1_PIN,LCD_D0_PIN};
 
 void main(int argc,char* argv[]){
     fbfd = open(FBDEV_PATH,O_RDWR);
@@ -74,7 +84,7 @@ void main(int argc,char* argv[]){
     gpio_init();
     ili9486_init();
     ili9486_rotate(180,false);
-
+    printf("Start copying fb to tft\n");
     int32_t act_x1 = 0;
     int32_t act_y1 = 0;
     int32_t act_x2 = ILI9486_TFTWIDTH > (uint32_t)vinfo.xres - 1 ?  (uint32_t)vinfo.xres - 1:ILI9486_TFTWIDTH;
@@ -83,7 +93,7 @@ void main(int argc,char* argv[]){
     long int byte_location = 0;
     unsigned char bit_location = 0;
     uint32_t screen_data_size = ((act_y2 - act_y1)*(act_x2-act_x1));
-    fbcolor16_t * screen_data = calloc(screen_data_size,sizeof(uint16_t));
+    fbcolor16_t * screen_data = calloc(screen_data_size,sizeof(fbcolor16_t));
 
     while(true){
 
@@ -100,7 +110,7 @@ void main(int argc,char* argv[]){
                 memcpy(&screen_data[location],&fbp16[location],(act_x2-act_x1));             
             }
             uint8_t data[4];
-            int32_t len = (act_x2 - act_x1 +1) * 2;
+            int32_t len = (act_x2 - act_x1 +1) *2;
             int32_t w = (act_x2 - act_x1) + 1 ;
             //Send pixels to tft
 
@@ -123,7 +133,7 @@ void main(int argc,char* argv[]){
             ili9486_write(ILI9486_CMD_MODE, ILI9486_RAMWR);
              int pixIdx = 0;
             for(y = act_y1; y <= act_y2; y++) {
-                 ili9486_write_array(ILI9486_DATA_MODE, (uint8_t *)(&screen_data[pixIdx]), len);
+                 ili9486_write_color_array(&screen_data[pixIdx],len);
                  pixIdx += w;
              }
 
@@ -135,6 +145,15 @@ void main(int argc,char* argv[]){
 
 
     }
+	gpiod_line_release(lrst);
+	gpiod_line_release(lcs);
+	gpiod_line_release(lrs);
+	gpiod_line_release(lwr);
+	gpiod_line_release(lrd);
+	
+	gpiod_line_release_bulk(&ldata);
+	gpiod_chip_close(chip);
+	
 	free(screen_data);
     close(fbfd);
 
@@ -142,37 +161,50 @@ void main(int argc,char* argv[]){
 
 }
 void gpio_init(void){
+	
 	printf("Init GPIO\n");
-    wiringPiSetup();
-    pinMode(LCD_RST_PIN,OUTPUT);
-    pinMode(LCD_CS_PIN,OUTPUT);
-    pinMode(LCD_RS_PIN,OUTPUT);
-    pinMode(LCD_WR_PIN,OUTPUT);
-    pinMode(LCD_RD_PIN,OUTPUT);
+    chip = gpiod_chip_open_by_name(chipname);
+	
+	//Get LCD control pins
+	lrst = gpiod_chip_get_line(chip,LCD_RST_PIN);
+	lcs = gpiod_chip_get_line(chip,LCD_CS_PIN);
+	lrs = gpiod_chip_get_line(chip,LCD_RS_PIN);
+	lcs = gpiod_chip_get_line(chip,LCD_CS_PIN);
+	lwr = gpiod_chip_get_line(chip,LCD_WR_PIN);
+	lrd = gpiod_chip_get_line(chip,LCD_RD_PIN);
+	if(lrst == NULL || lcs == NULL || lrs == NULL || lcs == NULL || lwr == NULL || lrd == NULL){
+		perror("Failed to get control lines");
+	}
+	printf("got control lines\n");
+	//Set LCD control pins to output, logic low
+	if(gpiod_line_request_output(lrst,"consumer",0) == -1){
+		perror("Failure to open lrst as output");
+	}
+	if(gpiod_line_request_output(lcs,"consumer",0) == -1){
+		perror("Failure to open lcs as output");
+	}
+	if(gpiod_line_request_output(lrs,"consumer",0) == -1){
+		perror("Failure to open lrs as output");
+	}
+	if(gpiod_line_request_output(lwr,"consumer",0) == -1){
+		perror("Failure to open lwr as output");
+	}
+	if(gpiod_line_request_output(lrd,"consumer",0) == -1){
+		perror("Failure to open lrd as output");
+	}
+	
+	//Get LCD Data pins
+	if(gpiod_chip_get_lines(chip,ldatapins,8,&ldata) == -1){
+		perror("Failure to get data lines");
+	}
+	printf("got data lines\n");
+	//Set LCD Data pins to output, logic low
+	if(gpiod_line_request_bulk_output(&ldata,"consumer",NULL) == -1){
+		perror("Failure to open ldata as output");
+	}
 
-    pinMode(LCD_D7_PIN,OUTPUT);
-    pinMode(LCD_D6_PIN,OUTPUT);
-    pinMode(LCD_D5_PIN,OUTPUT);
-    pinMode(LCD_D4_PIN,OUTPUT);
-    pinMode(LCD_D3_PIN,OUTPUT);
-    pinMode(LCD_D2_PIN,OUTPUT);
-    pinMode(LCD_D1_PIN,OUTPUT);
-    pinMode(LCD_D0_PIN,OUTPUT);
-	
-	digitalWrite(LCD_RST_PIN,HIGH);
-	digitalWrite(LCD_CS_PIN,HIGH);
-	digitalWrite(LCD_RS_PIN,LOW);
-	digitalWrite(LCD_WR_PIN,LOW);
-	digitalWrite(LCD_RD_PIN,LOW);
-	
-	digitalWrite(LCD_D7_PIN,LOW);
-    digitalWrite(LCD_D6_PIN,LOW);
-	digitalWrite(LCD_D5_PIN,LOW);
-	digitalWrite(LCD_D4_PIN,LOW);
-	digitalWrite(LCD_D3_PIN,LOW);
-	digitalWrite(LCD_D2_PIN,LOW);
-	digitalWrite(LCD_D1_PIN,LOW);
-	digitalWrite(LCD_D0_PIN,LOW);
+	printf("end gpio init\n");
+	gpiod_line_set_value(lrst,1);
 
 }
 void ili9486_init(void){
@@ -180,18 +212,17 @@ void ili9486_init(void){
     uint8_t data[15];
 
     /* hardware reset */
-    digitalWrite(LCD_RST_PIN,HIGH);
-	sleep_ms(1);
-    digitalWrite(LCD_RST_PIN,LOW); // RESX - Active low - initializes the chip
-	sleep_ms(10);
-	digitalWrite(LCD_RST_PIN,HIGH);
-	sleep_ms(120);
+    gpiod_line_set_value(lrst,0);// RESX - Active low - initializes the chip
+	usleep(12000);
+	gpiod_line_set_value(lrst,1);
+	usleep(12000);
 
     /* software reset */
     ili9486_write(ILI9486_CMD_MODE,ILI9486_SWRESET);
     sleep_ms(5);
+	printf("Display off\n");
     ili9486_write(ILI9486_CMD_MODE,ILI9486_DISPOFF);
-
+    usleep(1000);
     /*startup sequence */
 	
 	ili9486_write(ILI9486_CMD_MODE,0xF1);
@@ -295,6 +326,7 @@ void ili9486_init(void){
 
 }
 void ili9486_rotate(int degrees,bool bgr){
+	printf("Rotate %d\n",degrees);
     uint8_t color_order = MADCTL_RGB;
 
     if(bgr) color_order = MADCTL_BGR;
@@ -318,35 +350,43 @@ void ili9486_rotate(int degrees,bool bgr){
     }
 }
 void ili9486_write(int mode,uint8_t data){
-	
-	digitalWrite(LCD_CS_PIN,LOW); // CSX chip select - active low
-	digitalWrite(LCD_RS_PIN,mode); // D/CX parameter select
-	digitalWrite(LCD_RD_PIN,LOW);
-	usleep(1);
-    digitalWrite(LCD_RD_PIN,HIGH);
-	digitalWrite(LCD_WR_PIN,LOW);
-	usleep(1);
-	digitalWrite(LCD_WR_PIN,HIGH);
+	//Enable chip
+	gpiod_line_set_value(lcs,0);
+	// Set D/CX to mode
+	gpiod_line_set_value(lrs,mode);
 
-	
+	gpiod_line_set_value(lrd,1);
+	gpiod_line_set_value(lwr,0);
+
         //Write data to 8-bit bus
 	//digitalWriteByte(data);
-	digitalWrite(LCD_D7_PIN,data &0x80);
-	digitalWrite(LCD_D6_PIN,data &0x40);
-	digitalWrite(LCD_D5_PIN,data &0x20);
-	digitalWrite(LCD_D4_PIN,data &0x10);
-	digitalWrite(LCD_D3_PIN,data &0x08);
-	digitalWrite(LCD_D2_PIN,data &0x04);
-	digitalWrite(LCD_D1_PIN,data &0x02);
-	digitalWrite(LCD_D0_PIN,data &0x01);
-	digitalWrite(LCD_CS_PIN,HIGH);
+	int bits[] = {data&0x80,data &0x40,data &0x20,data &0x10,data &0x08,data &0x04,data &0x02,data &0x01};
+	gpiod_line_set_value_bulk(&ldata,bits);
+	usleep(5000);
+	gpiod_line_set_value(lwr,1);
+	usleep(5000);
+	gpiod_line_set_value(lcs,1);
+	int lowbits[] = {0,0,0,0,0,0,0,0};
+	gpiod_line_set_value_bulk(&ldata,lowbits);
+	usleep(5000);
 }
 void ili9486_write_array(int mode,uint8_t *data, uint16_t len){
     for(uint16_t idx = 0; idx < len; idx++){
         ili9486_write(mode,data[idx]);
     }
 }
-
+void ili9486_write_color(fbcolor16_t *color){
+	uint8_t msb = (color->ch.red << 3) & ((color->ch.green & 0x20) << 2) & ((color->ch.green & 0x10) << 1) & (color->ch.green & 0x08);
+	uint8_t lsb = ((color->ch.green & 0x04) << 5) & ((color->ch.green & 0x02) << 4) & ((color->ch.green & 0x01) << 3) & color->ch.blue;
+	ili9486_write(ILI9486_DATA_MODE,msb);
+	ili9486_write(ILI9486_DATA_MODE,lsb);
+	
+}
+void ili9486_write_color_array(fbcolor16_t* color_array,uint16_t len){
+	for(int idx = 0; idx < len; idx++){
+		ili9486_write_color(&color_array[idx]);
+	}
+}
 void sleep_ms(int delay){
     if(delay >= 1000)
         sleep(delay/1000);
